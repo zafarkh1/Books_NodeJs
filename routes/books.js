@@ -33,66 +33,62 @@ const bookSchema = new mongoose.Schema({
 
 const Book = mongoose.model('Book', bookSchema);
 
-// GET
-router.get('/', (_, res) => {
+//                                  GET all
+router.get('/', async (_, res) => {
+  const books = await Book.find().sort('name')
   res.send(books)
 })
 
-router.get('/:id', (req, res) => {
-  const book = books.find(b => b.id === parseInt(req.params.id))
+//                                  GET one
+router.get('/:id', async (req, res) => {
+  const book = await Book.find(req.params.id)
   if (!book) return res.status(404).send('Book not found!')
   res.send(book)
 })
 
-// POST
-router.post('/', (req, res) => {
+//                                   POST
+router.post('/', async (req, res) => {
   const {error} = validateBook(req.body)
   if (error) return res.status(400).send(error.details[0].message)
 
-
-  const book = new Book({
+  let book = new Book({
     title: req.body.title,
     description: req.body.description,
     price: req.body.price
   });
 
   try {
-    const result =  book.save()
-    console.log(result)
+    book = await book.save()
+    res.send(book);
   } catch (e) {
     for (let field in e.errors) {
       console.log(e.errors[field].message)
     }
+    res.status(500).send('Error saving the book');
   }
-
-
-  postCourse()
-  res.send(book)
 })
 
-// PUT
-router.put('/:id', (req, res) => {
-  const book = books.find(b => b.id === parseInt(req.params.id))
-  if (!book) return res.status(404).send('Book not found!')
-
+//                                   PUT
+router.put('/:id', async (req, res) => {
   const {error} = validateBook(req.body)
   if (error) return res.status(400).send(error.details[0].message)
 
-  const {title, description, price} = req.body
-  book.title = title
-  book.description = description
-  book.price = price
+  const book = await Book.findByIdAndUpdate(req.params.id, {
+    title: req.body.title,
+    description: req.body.description,
+    price: req.body.price
+  }, {new: true})
+
+  if (!book) return res.status(404).send('Book not found!')
 
   res.send(book)
 })
 
-// Delete
-router.delete('/:id', (req, res) => {
-  const book = books.find(b => b.id === parseInt(req.params.id))
+//                                   Delete
+router.delete('/:id', async (req, res) => {
+  const book = await Book.findByIdAndDelete(req.params.id)
   if (!book) return res.status(404).send('Book not found!')
 
-  const index = books.indexOf(book)
-  books.splice(index, 1)
   res.send(book)
 })
 
