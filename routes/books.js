@@ -3,10 +3,6 @@ const Joi = require("joi");
 const mongoose = require("mongoose");
 const router = express.Router();
 
-mongoose.connect('mongodb://localhost:27017/project')
-  .then(() => console.log('Connected to MongoDB'))
-  .catch((err) => console.log(err));
-
 const bookSchema = new mongoose.Schema({
   title: {
     type: String,
@@ -35,15 +31,23 @@ const Book = mongoose.model('Book', bookSchema);
 
 //                                  GET all
 router.get('/', async (_, res) => {
-  const books = await Book.find().sort('name')
-  res.send(books)
+  try {
+    const books = await Book.find().sort('title');
+    res.send(books);
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
 })
 
 //                                  GET one
 router.get('/:id', async (req, res) => {
-  const book = await Book.find(req.params.id)
-  if (!book) return res.status(404).send('Book not found!')
-  res.send(book)
+  try {
+    const book = await Book.findById(req.params.id)
+    if (!book) return res.status(404).send('Book not found!')
+    res.send(book)
+  } catch (err) {
+    res.send(err.message)
+  }
 })
 
 //                                   POST
@@ -62,9 +66,8 @@ router.post('/', async (req, res) => {
     res.send(book);
   } catch (e) {
     for (let field in e.errors) {
-      console.log(e.errors[field].message)
+      res.status(500).send(e.errors[field].message);
     }
-    res.status(500).send('Error saving the book');
   }
 })
 
@@ -73,30 +76,38 @@ router.put('/:id', async (req, res) => {
   const {error} = validateBook(req.body)
   if (error) return res.status(400).send(error.details[0].message)
 
-  const book = await Book.findByIdAndUpdate(req.params.id, {
-    title: req.body.title,
-    description: req.body.description,
-    price: req.body.price
-  }, {new: true})
+  try {
+    const book = await Book.findByIdAndUpdate(req.params.id, {
+      title: req.body.title,
+      description: req.body.description,
+      price: req.body.price
+    }, { new: true });
 
-  if (!book) return res.status(404).send('Book not found!')
+    if (!book) return res.status(404).send('Book not found!');
 
-  res.send(book)
+    res.send(book);
+  } catch (e) {
+    res.status(500).send(e.message);
+  }
 })
 
 //                                   Delete
 router.delete('/:id', async (req, res) => {
-  const book = await Book.findByIdAndDelete(req.params.id)
-  if (!book) return res.status(404).send('Book not found!')
+  try {
+    const book = await Book.findByIdAndDelete(req.params.id)
+    if (!book) return res.status(404).send('Book not found!')
 
-  res.send(book)
+    res.send('Successfully deleted book!')
+  } catch (e) {
+    res.status(500).send(e.message);
+  }
 })
 
 function validateBook(books) {
   const schema = Joi.object().keys({
     title: Joi.string().min(4).required(),
     description: Joi.string().min(4).required(),
-    price: Joi.number().required(),
+    price: Joi.number().required().min(50).max(1000),
   })
   return schema.validate(books)
 }
